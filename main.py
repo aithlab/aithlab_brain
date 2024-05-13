@@ -44,8 +44,6 @@ if 'session_id' not in st.session_state:
     st.session_state.session_id = get_session_id(_df_qna)
 
 llm_model = get_llm_model()
-# path = "./CV_TaehwanKim_v2.txt"
-# path = st.secrets['rag_url']
 document_id = st.secrets['document_id']
 path = get_document(credentials, document_id)
 retriever = get_retriever(path)
@@ -80,18 +78,14 @@ if query:
                 {'question':query},
                 config={'configurable':{"session_id":_session_id}}
             )
-            # response = result.content
-            # st.markdown(response)
             chunks = []
             for chunk in answer:
                 chunks.append(chunk)
                 chat_container.markdown("".join(chunks))
     
-    # st.session_state.messages.append({"role": "assistant", "content": response})
     st.session_state.messages.append({"role": "assistant", "content": "".join(chunks)})
     
     _df_qna = st.session_state.df_qna
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _df_qna.loc[len(_df_qna)] = [ip, date, _session_id, query, "".join(chunks)]
     save_df_to_gd(_df_qna, worksheet)
-    # print(st.session_state.store)

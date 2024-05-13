@@ -15,7 +15,6 @@ from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTex
 
 @st.cache_resource
 def get_llm_model(model_name="gpt-3.5-turbo"):
-    # print('Call get_llm_model')
     model = ChatOpenAI(
         temperature=0.0,
         max_tokens=None, #채팅 완성에서 생성할 토큰의 최대 개수
@@ -26,17 +25,9 @@ def get_llm_model(model_name="gpt-3.5-turbo"):
     return model
 
 def get_vectorstore(loader, vecstore_name):
-    # print('Call get_vectorstore')
     cache_dir = LocalFileStore("./.cache/")
     
     if vecstore_name == 'Chroma':
-        # splitter = CharacterTextSplitter.from_tiktoken_encoder(
-        #     separator="\n\n\n", 
-        #     chunk_size=900,
-        #     chunk_overlap=100
-        # )
-        # docs = loader.load_and_split(text_splitter=splitter)
-        # vectorstore = Chroma.from_documents(docs, cached_embeddings)
         embeddings = OpenAIEmbeddings()
         cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir) 
         data = loader.load()
@@ -62,8 +53,6 @@ def get_vectorstore(loader, vecstore_name):
 
 @st.cache_resource
 def get_retriever(path):
-    # print('Call get_retriever')
-    # loader = Docx2txtLoader(path)
     loader = TextLoader(path)
     
     vectorstore = get_vectorstore(loader, 'Chroma')
@@ -139,10 +128,8 @@ class mapping:
         self._map_chain = map_chain
     
     def map_docs(self, inputs):
-        # question = inputs["question"]
         question = inputs["summary"].content
         documents = self._retriever.invoke(question)
-        # print(documents)
         return "\n\n".join(
             self._map_chain.invoke({"context": doc.page_content, "question": question}).content
             for doc in documents
@@ -155,7 +142,6 @@ class session_history:
 
     # 세션 ID를 기반으로 세션 기록을 가져오는 함수
     def get(self, _):
-        # print("==========", self._session_id)
         if self._session_id not in self._store: # 세션 ID가 store에 없는 경우
             # 새로운 ChatMessageHistory 객체를 생성하여 store에 저장
             self._store[self._session_id] = ChatMessageHistory()
@@ -164,14 +150,11 @@ class session_history:
 
 # @st.cache_resource
 def get_chain(retriever, llm_model):
-    # print('Call get_chain')
     summary_chain = summary_prompt | llm_model
     map_chain = map_prompt | llm_model
     _mapping = mapping(retriever, map_chain)
-    # map_results = RunnablePassthrough() | RunnableLambda(_mapping.map_docs)
     map_results = {"summary": summary_chain} | RunnableLambda(_mapping.map_docs)
     reduce_chain = {"context": map_results, "question": RunnablePassthrough()} | reduce_prompt | llm_model
-    # recursion_cahin = {"context":map_results, "candidate":reduce_chain} | recursion_prompt | llm_model
     refine_chain = {"context": reduce_chain} | refine_prompt | llm_model | StrOutputParser()
     return refine_chain
 
