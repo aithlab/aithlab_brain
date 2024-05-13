@@ -28,7 +28,7 @@ def get_vectorstore(loader, vecstore_name):
     cache_dir = LocalFileStore("./.cache/")
     
     if vecstore_name == 'Chroma':
-        embeddings = OpenAIEmbeddings()
+        embeddings = OpenAIEmbeddings(api_key=st.secrets['openai_api_key'])
         cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir) 
         data = loader.load()
         vectorstore = Chroma.from_documents(data, cached_embeddings)
