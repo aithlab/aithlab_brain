@@ -43,7 +43,7 @@ st.session_state.df_qna = _df_qna
 if 'session_id' not in st.session_state:
     st.session_state.session_id = get_session_id(_df_qna)
 
-llm_model = get_llm_model('gpt-4')
+llm_model = get_llm_model('gpt-3.5-turbo')
 document_id = st.secrets['document_id']
 path = get_document(credentials, document_id)
 retriever = get_retriever(path)
@@ -73,7 +73,7 @@ if query:
     with st.chat_message("assistant"):
         chat_container = st.empty()
         _chain = st.session_state.conversation
-        with st.spinner("Thinking..."):
+        with st.spinner("Thinking... :thinking_face:"):
             answer = _chain.stream(
                 {'question':query},
                 config={'configurable':{"session_id":_session_id}}
