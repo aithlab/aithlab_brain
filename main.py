@@ -8,9 +8,9 @@ ip = pebblo.get_ip()
 
 # Streamlit
 st.set_page_config(
-    page_title="Taehwan's Brain",
+    page_title="Taehwan's secretary",
     layout='wide', #centered
-    page_icon=":brain:")
+    page_icon=":robot_face:")
 
 if 'store' not in st.session_state:
     store = {} # 세션 기록을 저장할 딕셔너리
