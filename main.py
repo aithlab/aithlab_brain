@@ -9,7 +9,7 @@ ip = pebblo.get_ip()
 # Streamlit
 st.set_page_config(
     page_title="Taehwan's secretary",
-    layout='wide', #centered
+    layout='centered', #wide
     page_icon=":robot_face:")
 
 if 'store' not in st.session_state:
