@@ -9,6 +9,7 @@ from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_core.output_parsers import StrOutputParser
 
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 
@@ -19,6 +20,7 @@ def get_llm_model(model_name="gpt-3.5-turbo"):
         temperature=0.0,
         max_tokens=None, #채팅 완성에서 생성할 토큰의 최대 개수
         model_name=model_name,
+        streaming=True,
         api_key=st.secrets['openai_api_key']
     )
     return model
@@ -153,7 +155,7 @@ class session_history:
 
     # 세션 ID를 기반으로 세션 기록을 가져오는 함수
     def get(self, _):
-        print("==========", self._session_id)
+        # print("==========", self._session_id)
         if self._session_id not in self._store: # 세션 ID가 store에 없는 경우
             # 새로운 ChatMessageHistory 객체를 생성하여 store에 저장
             self._store[self._session_id] = ChatMessageHistory()
@@ -170,7 +172,7 @@ def get_chain(retriever, llm_model):
     map_results = {"summary": summary_chain} | RunnableLambda(_mapping.map_docs)
     reduce_chain = {"context": map_results, "question": RunnablePassthrough()} | reduce_prompt | llm_model
     # recursion_cahin = {"context":map_results, "candidate":reduce_chain} | recursion_prompt | llm_model
-    refine_chain = {"context": reduce_chain} | refine_prompt | llm_model
+    refine_chain = {"context": reduce_chain} | refine_prompt | llm_model | StrOutputParser()
     return refine_chain
 
 def get_chat_chain(store, session_id, retriever, llm_model):
