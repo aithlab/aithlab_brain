@@ -1,9 +1,9 @@
 import streamlit as st
 from langchain.storage import LocalFileStore
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma, FAISS
-from langchain_community.document_loaders import Docx2txtLoader, TextLoader
+from langchain_community.document_loaders import TextLoader
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_community.chat_message_histories import ChatMessageHistory
@@ -64,9 +64,10 @@ summary_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            당신은 김태환 박사님의 비서입니다. 김태환 박사님에 대한 질문을 대신 답해주는 역할입니다.(답변은 한글로해주세요.) 질문을 요약해주세요.
+            당신은 김태환 박사님의 비서입니다. 김태환 박사님에 대한 질문을 대신 답해주는 역할입니다.(답변은 한글로해주세요.) 질문의 의도 및 내용을 요약해주세요.
             """,
         ),
+        MessagesPlaceholder(variable_name='history'),
         ("human", "{question}"),
     ]
 )
