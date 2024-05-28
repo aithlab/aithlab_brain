@@ -64,7 +64,8 @@ summary_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            당신은 김태환 박사님의 비서입니다. 김태환 박사님에 대한 질문을 대신 답해주는 역할입니다.(답변은 한글로해주세요.) 질문의 의도 및 내용을 요약해주세요.
+            당신은 김태환(Taehwan Kim) 박사님의 비서인 TALIA입니다. 김태환(Taehwan Kim) 박사님에 대한 질문을 대신 답해주는 역할입니다(답변은 {language}로해주세요). 
+            질문의 의도 및 내용을 요약해주세요.
             """,
         ),
         MessagesPlaceholder(variable_name='history'),
@@ -77,8 +78,11 @@ map_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            당신은 김태환 박사님의 비서입니다. 김태환 박사님에 대한 질문을 대신 답해주는 역할입니다.(답변은 한글로해주세요.) 질문에 답하기 위해 필요한 내용을 다음 문장에서 찾아서 내용을 정리해주세요(만약 관련된 내용이 없다면, 아무것도 반환하지 마세요.):
+            당신은 김태환(Taehwan Kim) 박사님의 비서인 TALIA입니다. 김태환(Taehwan Kim) 박사님에 대한 질문을 대신 답해주는 역할입니다(답변은 {language}로해주세요.) 
+            질문에 답하기 위해 필요한 내용을 다음 문장에서 찾아서 내용을 정리해주세요(만약 관련된 내용이 없다면, 아무것도 반환하지 마세요.):
+            ```
             {context}
+            ```
             """,
         ),
         ("human", "{question}"),
@@ -90,8 +94,11 @@ reduce_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """ 
-            당신은 김태환 박사님의 비서입니다. 김태환 박사님에 대한 질문을 대신 답해주는 역할입니다.(답변은 한글로해주세요.) 다음에 주어진 문장들을 이용해 답변을 작성해주세요(1.논문의 경우에는 한글로 번역하지 말아주세요. 그리고 저널명까지 함께 보여주세요. 2.질문에 답변하기 위한 정보가 충분하지 않은 경우에는 김태환 박사에게 연락할 수 있도록 안내해주세요.):
+            당신은 김태환(Taehwan Kim) 박사님의 비서인 TALIA입니다. 김태환(Taehwan Kim) 박사님에 대한 질문을 대신 답해주는 역할입니다(답변은 {language}로해주세요.) 
+            다음에 주어진 문장들을 이용해 답변을 작성해주세요(1.논문의 경우에는 한글로 번역하지 말아주세요. 그리고 저널명까지 함께 보여주세요. 2.답변에 대한 정보가 부족하다면 거짓말을 하지 말고, 김태환 박사에게 연락할 수 있도록 안내해주세요.):
+            ```
             {context}
+            ```
             """,
         ),
         ("human", "{question}"),
@@ -103,8 +110,11 @@ refine_prompt = ChatPromptTemplate.from_messages(
         (
             'system',
             """
-            당신은 김태환 박사님의 비서입니다. 김태환 박사님에 대한 질문을 대신 답해주는 역할입니다.(답변은 한글로해주세요.) 다음의 내용을 공손한 말투로 다시 작성해주세요(작성한 내용만 반환해주세요):
+            당신은 김태환(Taehwan Kim) 박사님의 비서인 TALIA입니다. 김태환(Taehwan Kim) 박사님에 대한 질문을 대신 답해주는 역할입니다(답변은 {language}로해주세요.) 
+            다음의 내용을 공손한 말투로 다시 작성해주세요(작성한 내용만 반환해주세요):
+            ```
             {context}
+            ```
             """
         )
     ]
@@ -115,11 +125,13 @@ class mapping:
         self._retriever = retriever
         self._map_chain = map_chain
     
-    def map_docs(self, inputs):
-        question = inputs["summary"].content
-        documents = self._retriever.invoke(question)
+    def map_docs(self, input):
+        print("\n\n\n", input,"\n\n\n")
+        summary = input["summary"].content
+        language = input['conversation']['language']
+        documents = self._retriever.invoke(summary)
         return "\n\n".join(
-            self._map_chain.invoke({"context": doc.page_content, "question": question}).content
+            self._map_chain.invoke({"context": doc.page_content, "question": summary, 'language':language}).content
             for doc in documents
         )
 
@@ -136,17 +148,29 @@ class session_history:
         
         return self._store[self._session_id]
 
+class convey_parameters:
+    def __init__(self, prompt):
+        self._prompt = prompt
+        
+    def __call__(self, input):
+        context = input['context']
+        # question = input['conversation']['question']
+        # language = input['conversation']['language']
+        return reduce_prompt.invoke({"context": context, **input['conversation']})
+
 # @st.cache_resource
 def get_chain(retriever, llm_model):
     summary_chain = summary_prompt | llm_model
     map_chain = map_prompt | llm_model
     _mapping = mapping(retriever, map_chain)
-    map_results = {"summary": summary_chain} | RunnableLambda(_mapping.map_docs)
-    reduce_chain = {"context": map_results, "question": RunnablePassthrough()} | reduce_prompt | llm_model
-    refine_chain = {"context": reduce_chain} | refine_prompt | llm_model | StrOutputParser()
+    map_results = {"summary": summary_chain, "conversation": RunnablePassthrough()} | RunnableLambda(_mapping.map_docs)
+    _reduce_prompt = convey_parameters(reduce_prompt)
+    reduce_chain = {"context": map_results, "conversation": RunnablePassthrough()} | RunnableLambda(_reduce_prompt) | llm_model
+    _refine_prompt = convey_parameters(refine_prompt)
+    refine_chain = {"context": reduce_chain, "conversation":RunnablePassthrough()} | RunnableLambda(_refine_prompt) | llm_model | StrOutputParser()
     return refine_chain
 
-def get_chat_chain(store, session_id, retriever, llm_model):
+def get_chat_chain(store, session_id, retriever, llm_model, language):
     refine_chain = get_chain(retriever, llm_model)
     history = session_history(store, session_id)
     
