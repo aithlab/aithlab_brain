@@ -79,13 +79,20 @@ map_prompt = ChatPromptTemplate.from_messages(
             "system",
             """
             당신은 김태환(Taehwan Kim) 박사님의 비서인 TALIA입니다. 김태환(Taehwan Kim) 박사님에 대한 질문을 대신 답해주는 역할입니다(답변은 {language}로해주세요.) 
-            질문에 답하기 위해 필요한 내용을 다음 문장에서 찾아서 내용을 정리해주세요(만약 관련된 내용이 없다면, 아무것도 반환하지 마세요.):
+            질문의 의도를 바탕으로 주어진 문장에서 답변을 위해 필요한 내용을 정리해주세요(만약 관련된 내용이 없다면, 아무것도 반환하지 마세요.):
+            
+            질문의 의도:
+            ```
+            {summary}
+            ```
+            
+            주어진 문장:
             ```
             {context}
             ```
-            """,
+            """, #질문에 답하기 위해 필요한 내용을 다음 문장에서 찾아서 내용을 정리해주세요(만약 관련된 내용이 없다면, 아무것도 반환하지 마세요.):
         ),
-        ("human", "{question}"),
+        # ("human", "{question}"),
     ]
 )
 
@@ -131,7 +138,7 @@ class mapping:
         language = input['conversation']['language']
         documents = self._retriever.invoke(summary)
         return "\n\n".join(
-            self._map_chain.invoke({"context": doc.page_content, "question": summary, 'language':language}).content
+            self._map_chain.invoke({"context": doc.page_content, "summary": summary, 'language':language}).content
             for doc in documents
         )
 
